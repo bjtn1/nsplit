@@ -31,7 +31,7 @@ def format_elapsed_time(start_time: float) -> str:
     return time.strftime("%H:%M:%S", time.gmtime(elapsed_seconds))
 
 
-def split_file(filepath: str, filename: str, filesize: int) -> None:
+def split_file(filepath: str, filesize: int, buf_size: int = ONE_MB) -> str:
     """
     Splits a large file into multiple 4GB chunks and stores them in a dedicated split directory.
 
@@ -41,9 +41,15 @@ def split_file(filepath: str, filename: str, filesize: int) -> None:
 
     Args:
         filepath (str): The full path to the file to be split.
-        filename (str): The base name of the file.
         filesize (int): The size of the file in bytes.
+        bufsize  (int): The size of the buffer where we store bytes to be read and written
+
+    Returns:
+        str: Path of the newly created split directory
     """
+
+    # get the name of the file from the filepath
+    filename: str = os.path.basename(filepath)
 
     # calculate how many splits we're gonna create for this file
     # use math.ceil to in case filesize is not perfectly divisible by 4GB
@@ -74,7 +80,7 @@ def split_file(filepath: str, filename: str, filesize: int) -> None:
                 # each split must be 4GB long
                 while bytes_written < FOUR_GB:
                     # read the input file (file to be split) in chunks of 1MB 
-                    chunk = infile.read(ONE_MB)
+                    chunk = infile.read(buf_size)
                     # if there is no more bytes to be read, break out of the loop
                     if not chunk:
                         break
@@ -97,6 +103,9 @@ def split_file(filepath: str, filename: str, filesize: int) -> None:
 
     # remove the file that was just  split
     os.remove(filepath)
+
+    # return the path of the newly created .split directory
+    return split_dir
 
 
 def collect_files(directory: str, extension: str, recursive: bool) -> list[str]:
