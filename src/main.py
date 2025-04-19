@@ -59,7 +59,6 @@ def main() -> None:
             print(f"Skipping {filepath}: Insufficient storage space.")
             continue
 
-        filename = os.path.basename(filepath)
         split_file(filepath, filesize)
         split_count += 1
 
