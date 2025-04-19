@@ -60,7 +60,7 @@ def main() -> None:
             continue
 
         filename = os.path.basename(filepath)
-        split_file(filepath, filename, filesize)
+        split_file(filepath, filesize)
         split_count += 1
 
     elapsed_time = format_elapsed_time(start_time)
