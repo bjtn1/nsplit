@@ -20,7 +20,7 @@
 Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/nsplitter.git
+git clone https://github.com/bjtn1/nsplitter.git
 cd nsplitter
 ```
 
