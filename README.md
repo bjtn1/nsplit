@@ -1,6 +1,6 @@
 # 🪓 nsplitter
 
-**nsplitter** is a Python-based command-line tool that efficiently splits large files into 4GB chunks — perfect for backup, archiving, or transferring large media and binary files on platforms with size limitations.
+**nsplitter** is a Python-based command-line tool that efficiently splits large files into 4GB chunks — perfect for backup, archiving, or transferring large media and binary files on platforms with size limitations (such as FAT32 formatted drives).
 
 ---
 
