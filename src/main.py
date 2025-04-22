@@ -21,12 +21,16 @@ def main() -> None:
     group.add_argument("-f", "--files", nargs="+", help="Specific files to split")
 
     parser.add_argument("-r", "--recursive", action="store_true", help="Recursively process files in directories")
-    parser.add_argument("-e", "--extension", required=True, help="File extension to process (e.g., .mp4)")
+    parser.add_argument("-e", "--extension", help="File extension to process (e.g., mp4, no dot) — required if using --directory")
     args = parser.parse_args()
 
     extension = args.extension.lstrip(".")
     # this is an array where we'll save the files that the user wants to split
     files: list[str] = args.files or []
+
+    # extension flag should only be required when directory flag is present
+    if args.directory and not args.extension:
+        parser.error("--extension is required when using --directory.")
 
     if args.directory:
         files.extend(collect_files(args.directory, extension, args.recursive))
