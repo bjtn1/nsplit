@@ -97,7 +97,7 @@ def split_file(filepath: str, filesize: int, buf_size: int = ONE_MB) -> str:
             # print report for each split
             print(
                 f"[{elapsed_time}] [{split + 1}/{num_splits}] "
-                f"[{progress:.2%}] {total_bytes_written:_}/{filesize:_} bytes",
+                f"[{progress:.2%}] {total_bytes_written:_}/{filesize:_} bytes {filename}",
                 end="\r" if total_bytes_written < filesize else "\n",
             )
 

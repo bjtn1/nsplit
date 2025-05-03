@@ -24,7 +24,6 @@ def main() -> None:
     parser.add_argument("-e", "--extension", help="File extension to process (e.g., mp4, no dot) — required if using --directory")
     args = parser.parse_args()
 
-    extension = args.extension.lstrip(".")
     # this is an array where we'll save the files that the user wants to split
     files: list[str] = args.files or []
 
@@ -33,6 +32,7 @@ def main() -> None:
         parser.error("--extension is required when using --directory.")
 
     if args.directory:
+        extension = args.extension.lstrip(".")
         files.extend(collect_files(args.directory, extension, args.recursive))
 
     if not files:
@@ -48,7 +48,7 @@ def main() -> None:
             continue
 
         file_extension = os.path.splitext(filepath)[1].lstrip(".")
-        if file_extension != extension:
+        if args.directory and file_extension != extension:
             print(f"Skipping {filepath}: Extension mismatch.")
             continue
 
