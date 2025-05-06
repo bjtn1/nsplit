@@ -49,18 +49,18 @@ def main() -> None:
 
         file_extension = os.path.splitext(filepath)[1].lstrip(".")
         if args.directory and file_extension != extension:
-            print(f"Skipping {filepath}: Extension mismatch.")
+            # print(f"Skipping {filepath}: Extension mismatch.")
             continue
 
         filesize = os.path.getsize(filepath)
         if filesize <= FOUR_GB:
-            print(f"Skipping {filepath}: File size under 4GB.")
+            # print(f"Skipping {filepath}: File size under 4GB.")
             continue
 
         # this checks that there;s enough storage on disk for the splitting process to take place
         available_storage = shutil.disk_usage(filepath).free
         if filesize > available_storage:
-            print(f"Skipping {filepath}: Insufficient storage space.")
+            # print(f"Skipping {filepath}: Insufficient storage space.")
             continue
 
         split_file(filepath, filesize)

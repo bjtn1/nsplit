@@ -10,12 +10,15 @@ Contains the core functions and logic needed for the nsplitter CLI to work such 
 
 import math
 import os
-import shutil
 import time
 
+ONE_KB = 2**10
+THIRTY_TWO_KB = 32 * ONE_KB
+SIXTY_FOUR_KB = 64 * ONE_KB
 ONE_MB = 2**20
 FOUR_GB = 4 * 2**30
-CHECKMARK = u'\u2705'
+MAX_SPLIT_SIZE = FOUR_GB - SIXTY_FOUR_KB
+
 
 def format_elapsed_time(start_time: float) -> str:
     """
@@ -31,7 +34,7 @@ def format_elapsed_time(start_time: float) -> str:
     return time.strftime("%H:%M:%S", time.gmtime(elapsed_seconds))
 
 
-def split_file(filepath: str, filesize: int, buf_size: int = ONE_MB) -> str:
+def split_file(filepath: str, filesize: int, buf_size: int = THIRTY_TWO_KB) -> str:
     """
     Splits a large file into multiple 4GB chunks and stores them in a dedicated split directory.
 
@@ -53,14 +56,16 @@ def split_file(filepath: str, filesize: int, buf_size: int = ONE_MB) -> str:
 
     # calculate how many splits we're gonna create for this file
     # use math.ceil to in case filesize is not perfectly divisible by 4GB
-    num_splits = math.ceil(filesize / FOUR_GB)
+    num_splits = math.ceil(filesize / MAX_SPLIT_SIZE)
 
     # get the name of the directory where this file is located
     # so that we know where to put the split files
     parent_dir = os.path.dirname(filepath)
 
-    # creates a file named <filename>.split
-    split_dir = os.path.join(parent_dir, f"{filename}.split")
+    # creates a file named <filename>.split.<file_extension>
+    file_extension = os.path.splitext(filepath)[1].lstrip(".")
+    filename_without_extension = os.path.splitext(os.path.basename(filepath))[0]
+    split_dir = os.path.join(parent_dir, f"{filename_without_extension}.split.{file_extension}")
     os.makedirs(split_dir, exist_ok=True)
 
     start_time = time.time()
@@ -72,19 +77,19 @@ def split_file(filepath: str, filesize: int, buf_size: int = ONE_MB) -> str:
     with open(filepath, "rb") as infile:
         # run this loop for as many splits as will be needed for this specific file
         for split in range(num_splits):
-            # create and name the split file {filename}/{nn} where `nn` is the split number beginnign at `00`
+            # create and name the split file {filename}/{nn} where nn is the split number beginnign at 00
             split_path = os.path.join(split_dir, f"{split:02}")
             # begin loop to write to the newly created split file
             with open(split_path, "wb") as outfile:
                 bytes_written = 0
-                # each split must be 4GB long
-                while bytes_written < FOUR_GB:
-                    # read the input file (file to be split) in chunks of 1MB 
+                # each split must be 4GB - 64KB long
+                while bytes_written < (MAX_SPLIT_SIZE):
+                    # read the input file (file to be split) in chunks of 32KB 
                     chunk = infile.read(buf_size)
                     # if there is no more bytes to be read, break out of the loop
                     if not chunk:
                         break
-                    # write the 1MB chunk we just read fromn the infile to the outfile
+                    # write the 32KB chunk we just read fromn the infile to the outfile
                     outfile.write(chunk)
                     # increment loop-stopping condition
                     bytes_written += len(chunk)
@@ -97,16 +102,15 @@ def split_file(filepath: str, filesize: int, buf_size: int = ONE_MB) -> str:
             # print report for each split
             print(
                 f"[{elapsed_time}] [{split + 1}/{num_splits}] "
-                f"[{progress:.2%}] {total_bytes_written:_}/{filesize:_} bytes {filename}",
+                f"[{progress:.2%}] {total_bytes_written:_}/{filesize:_} bytes | {filename}",
                 end="\r" if total_bytes_written < filesize else "\n",
             )
 
-    # remove the file that was just  split
-    os.remove(filepath)
+    # remove the file that was just split
+    # os.remove(filepath)
 
     # return the path of the newly created .split directory
     return split_dir
-
 
 def collect_files(directory: str, extension: str, recursive: bool) -> list[str]:
     """
