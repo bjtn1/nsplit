@@ -1,3 +1,12 @@
+# nsplitter.py
+
+**Author:** Brandon Jose Tenorio Noguera  
+**Email:** [nsplitter@bjtn.me](mailto:nsplitter@bjtn.me)
+
+`nsplitter.py` is a command-line tool for splitting and merging large files — ideal for managing files on FAT32-formatted drives or any storage medium with size constraints (like a 4GB limit). It cleanly divides large files into 4GB chunks and can later reconstruct them with full fidelity.
+
+---
+
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
 
 # Table of Contents
@@ -15,15 +24,6 @@
 
 <!-- TOC end -->
 
-<!-- TOC --><a name="nsplitterpy"></a>
-# nsplitter.py
-
-**Author:** Brandon Jose Tenorio Noguera  
-**Email:** [nsplitter@bjtn.me](mailto:nsplitter@bjtn.me)
-
-`nsplitter.py` is a command-line tool for splitting and merging large files — ideal for managing files on FAT32-formatted drives or any storage medium with size constraints (like a 4GB limit). It cleanly divides large files into 4GB chunks and can later reconstruct them with full fidelity.
-
----
 
 <!-- TOC --><a name="-features"></a>
 ## 🔧 Features
