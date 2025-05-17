@@ -157,4 +157,4 @@ Merging this folder recreates `game.nsp`.
 <!-- TOC --><a name="-license"></a>
 ## 📝 License
 
-This project is released as-is, with no license currently applied.
+This project is released under the MIT License
