@@ -1,157 +1,160 @@
-
-<!-- TOC --><a name="-nsplitter"></a>
-# 🪓 nsplitter
-
-**nsplitter** is a Python-based command-line tool that efficiently splits large files into 4GB chunks — perfect for backup, archiving, or transferring large media and binary files on platforms with size limitations (such as FAT32 formatted drives).
-
----
-
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
 
-* [🚀 Features](#-features)
-* [📦 Installation](#-installation)
-* [🛠️ Usage](#-usage)
-    + [Split specific files:](#split-specific-files)
-    + [Split all matching files in a directory:](#split-all-matching-files-in-a-directory)
-    + [Options](#options)
-* [💡 Examples](#-examples)
-* [📁 Output Structure](#-output-structure)
-* [🧪 Running Tests](#-running-tests)
-* [📄 License](#-license)
-* [👨‍💻 Author](#-author)
-* [✨ Contributing](#-contributing)
+- [nsplitter.py](#nsplitterpy)
+   * [🔧 Features](#-features)
+   * [📦 Installation](#-installation)
+   * [🚀 Usage](#-usage)
+      + [🔹 Splitting Files](#-splitting-files)
+      + [🔹 Merging Files](#-merging-files)
+   * [🧪 Dry Run Mode](#-dry-run-mode)
+   * [🧹 Clean Up](#-clean-up)
+   * [🔤 Arguments](#-arguments)
+   * [🧠 Notes](#-notes)
+   * [🛠️ Example Split Folder](#-example-split-folder)
+   * [📝 License](#-license)
 
 <!-- TOC end -->
+
+<!-- TOC --><a name="nsplitterpy"></a>
+# nsplitter.py
+
+**Author:** Brandon Jose Tenorio Noguera  
+**Email:** [nsplitter@bjtn.me](mailto:nsplitter@bjtn.me)
+
+`nsplitter.py` is a command-line tool for splitting and merging large files — ideal for managing files on FAT32-formatted drives or any storage medium with size constraints (like a 4GB limit). It cleanly divides large files into 4GB chunks and can later reconstruct them with full fidelity.
 
 ---
 
 <!-- TOC --><a name="-features"></a>
-## 🚀 Features
+## 🔧 Features
 
-- 🔹 Splits files into 4GB chunks
-- 🔹 Supports individual files or entire directories
-- 🔹 Optional recursive search for nested folders
-- 🔹 Deletes original file after splitting to save space
-- 🔹 Simple CLI with live progress display
-- 🔹 Pure Python, no external dependencies
+- 🔹 **Split** files larger than 4GB into chunks.
+- 🔹 **Merge** `.split.<ext>` folders back into the original file.
+- 🔹 Supports **batch processing** via directory scanning.
+- 🔹 **Recursive** directory search.
+- 🔹 Optional **dry-run** mode (simulate actions).
+- 🔹 Optionally **delete original files** after processing.
+- 🔹 Clear progress messages and summary output.
 
 ---
 
 <!-- TOC --><a name="-installation"></a>
 ## 📦 Installation
 
-Clone the repository:
+No installation needed. Just ensure you have Python 3.7+ installed.
 
 ```bash
-git clone https://github.com/bjtn1/nsplitter.git
-cd nsplitter
+python nsplitter.py [OPTIONS]
 ```
-
-Run it with:
-
-```bash
-python src/main.py ...
-```
-
-> ✅ Requires Python 3.8 or higher
 
 ---
 
 <!-- TOC --><a name="-usage"></a>
-## 🛠️ Usage
+## 🚀 Usage
 
-<!-- TOC --><a name="split-specific-files"></a>
-### Split specific files:
+<!-- TOC --><a name="-splitting-files"></a>
+### 🔹 Splitting Files
+
+Split a large file into 4GB chunks:
 
 ```bash
-python src/main.py -f file1.mp4 file2.mp4
+python nsplitter.py --split FILE1 [FILE2 ...]
 ```
 
-
-> ⚠️ The -e/--extension flag is not required when using -f/--files.
-
-<!-- TOC --><a name="split-all-matching-files-in-a-directory"></a>
-### Split all matching files in a directory:
+Split all `.nsp` files in a directory (non-recursive):
 
 ```bash
-python src/main.py -d /path/to/files -e mp4
-```
-> ⚠️ The -e/--extension flag IS required when using -d/--directory.
-
-<!-- TOC --><a name="options"></a>
-### Options
-
-| Flag | Description |
-|------|-------------|
-| `-f, --files`      | One or more specific files to split |
-| `-d, --directory`  | Path to directory of files to split |
-| `-e, --extension`  | File extension to match (e.g. `mp4`) |
-| `-r, --recursive`  | Recursively include files in subdirectories |
-
----
-
-<!-- TOC --><a name="-examples"></a>
-## 💡 Examples
-
-**Split all `.mkv` files in `/videos` recursively:**
-
-```bash
-python main.py -d /videos -e mkv -r
+python nsplitter.py -s -d /path/to/files -e nsp
 ```
 
-**Split specific files:**
+Recursively split all `.mp4` files in a folder:
 
 ```bash
-python main.py -f movie.mkv backup.img -e mkv
+python nsplitter.py -s -d ./videos -e mp4 -r
+```
+
+<!-- TOC --><a name="-merging-files"></a>
+### 🔹 Merging Files
+
+Merge previously split files (i.e., `.split.nsp` folder):
+
+```bash
+python nsplitter.py --merge FOLDER1 [FOLDER2 ...]
+```
+
+Or merge all `.split.nsp` folders in a directory:
+
+```bash
+python nsplitter.py -m -d /path/to/splits -e nsp
 ```
 
 ---
 
-<!-- TOC --><a name="-output-structure"></a>
-## 📁 Output Structure
+<!-- TOC --><a name="-dry-run-mode"></a>
+## 🧪 Dry Run Mode
 
-After splitting, a new directory `<filename>.split/` is created next to the original file:
+Preview what would happen **without modifying files**:
+
+```bash
+python nsplitter.py -s -d ./isos -e iso --dry-run
+```
+
+---
+
+<!-- TOC --><a name="-clean-up"></a>
+## 🧹 Clean Up
+
+Delete the original file after splitting or merging:
+
+```bash
+python nsplitter.py -s FILE --clean
+```
+
+---
+
+<!-- TOC --><a name="-arguments"></a>
+## 🔤 Arguments
+
+| Argument               | Description                                                        |
+|------------------------|--------------------------------------------------------------------|
+| `-s`, `--split`        | Split file(s) into 4GB chunks.                                     |
+| `-m`, `--merge`        | Merge `.split.<ext>` folders back into a single file.              |
+| `-d`, `--directory`    | Directory of files or folders to process.                          |
+| `-e`, `--extension`    | File extension to match (e.g., `nsp`, `mp4`). Required with `-d`.  |
+| `-r`, `--recursive`    | Recurse into subdirectories.                                       |
+| `-c`, `--clean`        | Delete original files after splitting or merging.                  |
+| `--dry-run`            | Simulate the process without modifying any files.                  |
+| `files`                | Optional list of specific files or folders to process.             |
+
+---
+
+<!-- TOC --><a name="-notes"></a>
+## 🧠 Notes
+
+- Files smaller than 4GB will be skipped during splitting.
+- Merged files are restored to the same directory as the `.split.<ext>` folder.
+- The `.split.<ext>` folder must be named like `<filename>.split.<extension>` for merging to work correctly.
+
+---
+
+<!-- TOC --><a name="-example-split-folder"></a>
+## 🛠️ Example Split Folder
+
+If you split `game.nsp`, a folder named `game.split.nsp` will be created, containing:
 
 ```
-📁 movie.mkv.split/
+game.split.nsp/
 ├── 00
 ├── 01
 ├── 02
-...
+└── ...
 ```
 
-⚠️ The original file is **deleted** once the split is complete.
-
----
-
-<!-- TOC --><a name="-running-tests"></a>
-## 🧪 Running Tests
-
-```bash
-python -m unittest test_nsplitter.py
-```
+Merging this folder recreates `game.nsp`.
 
 ---
 
 <!-- TOC --><a name="-license"></a>
-## 📄 License
+## 📝 License
 
-This project is licensed under the [MIT License](https://github.com/bjtn1/nsplitter?tab=MIT-1-ov-file).
-
----
-
-<!-- TOC --><a name="-author"></a>
-## 👨‍💻 Author
-
-**Brandon Jose Tenorio Noguera**  
-📧 nsplitter@bjtn.me  
-🌐 [bjtn.me](https://bjtn.me)  
-🔗 [LinkedIn](https://www.linkedin.com/in/brandon-jose-tenorio-noguera/)
-
----
-
-<!-- TOC --><a name="-contributing"></a>
-## ✨ Contributing
-
-Pull requests are welcome! Feel free to open an issue or submit a feature suggestion.
-
+This project is released as-is, with no license currently applied.
