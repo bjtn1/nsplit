@@ -1,6 +1,6 @@
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
 
-- [nsplitter.py](#nsplitterpy)
+# Table of Contents
    * [🔧 Features](#-features)
    * [📦 Installation](#-installation)
    * [🚀 Usage](#-usage)
