@@ -52,7 +52,7 @@ def is_split_file(filepath: str) -> bool:
     return bool(re.match(r'^.+\.split\.[^.]+$', filename))
 
 
-def merge_file(folderpath: str) -> str:
+def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> str:
     """
     Merges a <filename>.split.<extension> file back into a <filename>.<extension> file
     """
@@ -65,27 +65,30 @@ def merge_file(folderpath: str) -> str:
 
     merged_filename_path = os.path.abspath(os.path.join(os.path.dirname(folderpath), merged_filename))
 
-    part_files = [
-        os.path.abspath(os.path.join(folderpath, fname))
-        for fname in os.listdir(folderpath)
-    ]
+    # this ensures the files will be in order when they get merged
+    part_files = sorted(
+        [os.path.abspath(os.path.join(folderpath, fname)) for fname in os.listdir(folderpath)],
+        key=lambda f: int(os.path.basename(f))
+    )
 
     print_banner(f"MERGING {os.path.basename(folderpath)}")
 
     with open(merged_filename_path, "wb") as outfile:
         for i, part in enumerate(part_files):
             print(f"ℹ️ Merging part {i:02}...")
-            with open(part, "rb") as infile:
-                shutil.copyfileobj(infile, outfile)
+            if not dry_run:
+                with open(part, "rb") as infile:
+                    shutil.copyfileobj(infile, outfile)
 
-    # shutil.rmtree(os.path.abspath(folderpath))
+    if clean:
+        shutil.rmtree(os.path.abspath(folderpath))
 
     print(f"✅ {merged_filename_path} successfully merged")
 
     return f"{merged_filename_path}"
 
 
-def split_file(filepath: str, filesize: int, buf_size: int = THIRTY_TWO_KB) -> str:
+def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = False, clean: bool = False) -> str:
     """
     Splits a large file into multiple 4GB chunks and stores them in a dedicated split directory.
 
@@ -95,12 +98,13 @@ def split_file(filepath: str, filesize: int, buf_size: int = THIRTY_TWO_KB) -> s
 
     Args:
         filepath (str): The full path to the file to be split.
-        filesize (int): The size of the file in bytes.
         bufsize  (int): The size of the buffer where we store bytes to be read and written
 
     Returns:
         str: Path of the newly created split directory
     """
+
+    filesize: int = os.path.getsize(filepath)
 
     # get the name of the file from the filepath
     filename: str = os.path.basename(filepath)
@@ -116,12 +120,10 @@ def split_file(filepath: str, filesize: int, buf_size: int = THIRTY_TWO_KB) -> s
     # creates a file named <filename>.split.<file_extension>
     file_extension = os.path.splitext(filepath)[1].lstrip(".")
     filename_without_extension = os.path.splitext(os.path.basename(filepath))[0]
-    split_dir = os.path.join(parent_dir, f"{filename_without_extension}.split.{file_extension}")
+    split_dir = os.path.abspath(os.path.join(parent_dir, f"{filename_without_extension}.split.{file_extension}"))
     os.makedirs(split_dir, exist_ok=True)
 
     print_banner(f"SPLITTING {filename}")
-
-    start_time = time.time()
 
     # needed for progress report
     total_bytes_written = 0
@@ -132,35 +134,33 @@ def split_file(filepath: str, filesize: int, buf_size: int = THIRTY_TWO_KB) -> s
         for split in range(num_splits):
             # create and name the split file {filename}/{nn} where nn is the split number beginnign at 00
             split_path = os.path.join(split_dir, f"{split:02}")
-            # begin loop to write to the newly created split file
-            with open(split_path, "wb") as outfile:
-                bytes_written = 0
-                # each split must be 4GB - 64KB long
-                while bytes_written < (MAX_SPLIT_SIZE):
-                    # read the input file (file to be split) in chunks of 32KB 
-                    chunk = infile.read(buf_size)
-                    # if there is no more bytes to be read, break out of the loop
-                    if not chunk:
-                        break
-                    # write the 32KB chunk we just read fromn the infile to the outfile
-                    outfile.write(chunk)
-                    # increment loop-stopping condition
-                    bytes_written += len(chunk)
-                    # this is just a fun metric to display once the process has finished
-                    total_bytes_written += len(chunk)
+            start_time = time.time()
+            if not dry_run:
+                # begin loop to write to the newly created split file
+                with open(split_path, "wb") as outfile:
+                    bytes_written = 0
+                    # each split must be 4GB - 64KB long
+                    while bytes_written < (MAX_SPLIT_SIZE):
+                        # read the input file (file to be split) in chunks of 32KB 
+                        chunk = infile.read(buf_size)
+                        # if there is no more bytes to be read, break out of the loop
+                        if not chunk:
+                            break
+                        # write the 32KB chunk we just read fromn the infile to the outfile
+                        outfile.write(chunk)
+                        # increment loop-stopping condition
+                        bytes_written += len(chunk)
+                        # this is just a fun metric to display once the process has finished
+                        total_bytes_written += len(chunk)
 
-            elapsed_time = format_elapsed_time(start_time)
+            # elapsed_time = format_elapsed_time(start_time)
             # get the progress of the splitting process for every file after each split
-            progress = total_bytes_written / filesize
-            # print report for each split
-            print(
-                f"[{elapsed_time}] [{split + 1}/{num_splits}] "
-                f"[{progress:.2%}] {total_bytes_written:_}/{filesize:_} bytes | {filename}",
-                end="\r" if total_bytes_written < filesize else "\n",
-            )
+            # progress = total_bytes_written / filesize
+            elapsed_time = format_elapsed_time(start_time)
+            print(f"ℹ️ Splitting part {split:02}... Elapsed: {elapsed_time}")
 
-    # remove the file that was just split
-    os.remove(filepath)
+    if clean:
+        os.remove(filepath)
 
     print(f"✅ {split_dir} successfully split")
     # return the path of the newly created .split directory
@@ -180,18 +180,21 @@ def collect_files(directory: str, extension: str, recursive: bool, split: bool) 
     Returns:
         list[str]: A list of file paths matching the given extension.
     """
-    collected_files: list[str] = []
+    collected_files = []
 
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.endswith(extension):
-                full_path = os.path.join(root, file)
-                # only collect split files if we're merging
-                if not split and is_split_file(full_path):
-                    collected_files.append(full_path)
-                # only collect full files (as opposed to split files) if we're splitting
-                elif split and not is_split_file(full_path):
-                    collected_files.append(full_path)
+    for root, dirs, files in os.walk(directory):
+        if split:
+            for file in files:
+                if file.endswith(f".{extension}"):
+                    path = os.path.join(root, file)
+                    if not is_split_file(path):
+                        collected_files.append(path)
+        else:
+            for dir in dirs:
+                path = os.path.join(root, dir)
+                if is_split_file(path):
+                    collected_files.append(path)
+
         if not recursive:
             break
 
@@ -203,111 +206,92 @@ def main() -> None:
 
     # we do mutually-exclusive group because we expect either a directory to be searched, or a series of 1 or more files to be split
     # splitting and merging are mutually-exclusive
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-d", "--directory", help="Directory of files to split or merge (non-inclusive)")
-    group.add_argument("-f", "--files", nargs="+", help="Specific files to split")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("-s", "--split", action="store_true", help="Split files")
+    mode.add_argument("-m", "--merge", action="store_true", help="Merge split folders")
 
-    group.add_argument("-s", "--split", nargs="+", help="Specific files to split")
-    group.add_argument("-m", "--merge", nargs="+", help="Path to split folder to merge back into a file")
-
+    parser.add_argument("-d", "--directory", help="Directory of files to split or merge")
+    parser.add_argument("-c", "--clean", action="store_true", help="Whether or not to delete the original files that we split/merge")
+    parser.add_argument("-e", "--extension", help="File extension to process (e.g., nsp, mp4)")
     parser.add_argument("-r", "--recursive", action="store_true", help="Recursively process files in directories")
-    parser.add_argument("-e", "--extension", help="File extension to process (e.g., mp4, no dot) — required if using --directory")
+    parser.add_argument("files", nargs="*", help="Optional list of specific file paths to split/merge")
+    parser.add_argument("--dry-run", action="store_true", help="Simulate the operations without modifying files")
 
     args = parser.parse_args()
 
-    # this is an array where we'll save the files that the user wants to split or merge
-    files: list[str] = args.files or []
+    if not args.split and not args.merge:
+        exit("❌ One of -s/--split or -m/--merge option is required")
 
-    if args.split:
-        # extension flag should only be required when directory flag is present
-        if args.directory and not args.extension:
-            parser.error("❌ --extension is required when using --directory.")
+    extension = None
 
-        if args.directory:
-            extension = args.extension.lstrip(".")
-            files.extend(collect_files(args.directory, extension, args.recursive, split=True))
+    files = args.files or []
+    split_filenames: list[str] = []
+    merge_filenames: list[str] = []
 
-        if not files:
-            print("❌ No files found to split.")
-            return
+    if args.directory and not args.extension:
+            exit("❌ -e/--extension is required when using -d/--directory.")
 
-        start_time: float = time.time()
-        split_count: int = 0
+    if args.directory:
+        extension = args.extension.lstrip(".")
+        to_split_or_not_to_split = bool(args.split)
+        files.extend(collect_files(args.directory, extension, args.recursive, split=to_split_or_not_to_split))
 
-        for filepath in files:
-            if not os.path.isfile(filepath):
-                print(f"❌ File not found: {filepath}")
-                continue
+    if not files:
+        print("❌ No files found to process.")
+        return
 
-            file_extension = os.path.splitext(filepath)[1].lstrip(".")
-            if args.directory and file_extension != extension:
-                print(f"❌ Skipping {filepath}: Extension mismatch.")
-                continue
+    start_time: float = time.time()
+    split_count: int = 0
+    merge_count: int = 0
 
-            filesize = os.path.getsize(filepath)
-            if filesize <= FOUR_GB:
-                print(f"❌ Skipping {filepath}: File size under 4GB.")
-                continue
+    for filepath in files:
+        if args.split and not os.path.isfile(filepath):
+            # print(f"❌ File not found: {filepath}")
+            continue
 
-            # this checks that there;s enough storage on disk for the splitting process to take place
-            available_storage = shutil.disk_usage(filepath).free
-            if filesize > available_storage:
-                print(f"❌ Skipping {filepath}: Insufficient storage space.")
-                continue
+        elif args.merge and not is_split_file(filepath):
+            # print(f"❌ File not found: {filepath}")
+            continue
 
-            # split_file(filepath, filesize)
+        file_extension = os.path.splitext(filepath)[1].lstrip(".")
+        if args.directory and file_extension != extension:
+            # print(f"⏭️ Skipping {os.path.basename(filepath)}: Extension mismatch.")
+            continue
 
+        if args.split and os.path.getsize(filepath) <= FOUR_GB:
+            # print(f"⏭️ Skipping {os.path.basename(filepath)}: File size under 4GB.")
+            continue
+
+        # this checks that there;s enough storage on disk for the splitting process to take place
+        if args.split and os.path.getsize(filepath) > shutil.disk_usage(filepath).free:
+            print(f"⏭️ Skipping {filepath}: Insufficient storage space.")
+            continue
+
+        if args.split:
+            split_file(filepath, dry_run=args.dry_run, clean=args.clean)
+            split_filenames.append(os.path.basename(filepath))
             split_count += 1
 
-        elapsed_time = format_elapsed_time(start_time)
-        print(f"\n✅ Split {split_count} files in {elapsed_time}.")
-        
-
-    if args.merge:
-        # extension flag should only be required when directory flag is present
-        if args.directory and not args.extension:
-            parser.error("❌ --extension is required when using --directory.")
-
-        if args.directory:
-            extension = args.extension.lstrip(".")
-            files.extend(collect_files(args.directory, extension, args.recursive, split=False))
-
-        if not files:
-            print("❌ No files found to split.")
-            return
-
-        start_time: float = time.time()
-        merge_count: int = 0
-
-        for filepath in files:
-            if not os.path.isfile(filepath):
-                print(f"❌ File not found: {filepath}")
-                continue
-
-            file_extension = os.path.splitext(filepath)[1].lstrip(".")
-            if args.directory and file_extension != extension:
-                print(f"❌ Skipping {filepath}: Extension mismatch.")
-                continue
-
-            filesize = os.path.getsize(filepath)
-            if filesize <= FOUR_GB:
-                print(f"❌ Skipping {filepath}: File size under 4GB.")
-                continue
-
-            # this checks that there;s enough storage on disk for the splitting process to take place
-            available_storage = shutil.disk_usage(filepath).free
-            if filesize > available_storage:
-                print(f"❌ Skipping {filepath}: Insufficient storage space.")
-                continue
-
-            # merge_file(filepath)
-
+        elif args.merge:
+            # merge_file(filepath, dry_run=args.dry_run, clean=args.clean)
+            merge_filenames.append(os.path.basename(filepath))
             merge_count += 1
 
-        elapsed_time = format_elapsed_time(start_time)
-        print(f"\n✅ Merged {merge_count} files in {elapsed_time}.")
+    elapsed_time = format_elapsed_time(start_time)
+
+    if args.split:
+        print_banner("SUMMARY")
+        for name in sorted(split_filenames):
+            print(f"✅ {name}")
+        print(f"\nSplit {split_count} files in {elapsed_time}.")
+    elif args.merge:
+        print_banner("SUMMARY")
+        for name in sorted(merge_filenames):
+            print(f"✅ {name}")
+        print(f"\nMerged {merge_count} files in {elapsed_time}.")
 
 
 if __name__ == "__main__":
     # merge_split_file("../TEST/Animal Crossing New Horizons [01006F8002326000][US][v0].split.nsp")
+    print()
     main()
