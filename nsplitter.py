@@ -40,7 +40,7 @@ def format_elapsed_time(start_time: float) -> str:
     elapsed = time.time() - start_time
     hours, remainder = divmod(int(elapsed), 3600)
     minutes, seconds = divmod(remainder, 60)
-    milliseconds = int((elapsed - int(elapsed)) * 1000)
+    # milliseconds = int((elapsed - int(elapsed)) * 1000)
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 
