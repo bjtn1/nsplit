@@ -37,8 +37,11 @@ def format_elapsed_time(start_time: float) -> str:
     Returns:
         str: Elapsed time formatted as "HH:MM:SS".
     """
-    elapsed_seconds = time.time() - start_time
-    return time.strftime("%H:%M:%S", time.gmtime(elapsed_seconds))
+    elapsed = time.time() - start_time
+    hours, remainder = divmod(int(elapsed), 3600)
+    minutes, seconds = divmod(remainder, 60)
+    milliseconds = int((elapsed - int(elapsed)) * 1000)
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 
 def is_split_file(filepath: str) -> bool:
@@ -72,11 +75,28 @@ def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> s
     print_banner(f"MERGING {os.path.basename(folderpath)}")
 
     with open(merged_filename_path, "wb") as outfile:
-        for i, part in enumerate(part_files):
-            print(f"ℹ️ Merging part {i:02}...")
+        for _, part in enumerate(part_files):
+
+            start_time = time.time()
+            last_printed_seconds = -1
+
+            # TODO
+            # print the timer nicer
+            # timer isnt counting up at all
+            # fix the error with the trailing slash
+
             if not dry_run:
                 with open(part, "rb") as infile:
+                    # timer display
+                    elapsed_seconds = int(time.time() - start_time)
+                    if elapsed_seconds != last_printed_seconds:
+                        print(f"ℹ️ Merging part {os.path.basename(part):02}... {format_elapsed_time(start_time)}", end="\r")
+                        last_printed_seconds = elapsed_seconds
+
                     shutil.copyfileobj(infile, outfile)
+
+            # for timer display
+            print()
 
     if clean:
         shutil.rmtree(os.path.abspath(folderpath))
@@ -123,22 +143,29 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
 
     print_banner(f"SPLITTING {filename}")
 
-    # needed for progress report
-    total_bytes_written = 0
-
     # open file in read-binary mode
     with open(filepath, "rb") as infile:
         # run this loop for as many splits as will be needed for this specific file
         for split in range(num_splits):
             # create and name the split file {filename}/{nn} where nn is the split number beginnign at 00
             split_path = os.path.join(split_dir, f"{split:02}")
-            print(f"ℹ️ Splitting part {split:02}...")
+
+            start_time = time.time()
+            last_printed_seconds = -1
+
             if not dry_run:
                 # begin loop to write to the newly created split file
                 with open(split_path, "wb") as outfile:
                     bytes_written = 0
                     # each split must be 4GB - 64KB long
                     while bytes_written < (MAX_SPLIT_SIZE):
+
+                        # timer display
+                        elapsed_seconds = int(time.time() - start_time)
+                        if elapsed_seconds != last_printed_seconds:
+                            print(f"ℹ️ Splitting part {split:02}... Elapsed: {format_elapsed_time(start_time)}", end="\r")
+                            last_printed_seconds = elapsed_seconds
+
                         # read the input file (file to be split) in chunks of 32KB 
                         chunk = infile.read(buf_size)
                         # if there is no more bytes to be read, break out of the loop
@@ -148,8 +175,9 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
                         outfile.write(chunk)
                         # increment loop-stopping condition
                         bytes_written += len(chunk)
-                        # this is just a fun metric to display once the process has finished
-                        total_bytes_written += len(chunk)
+            # flush a clean line. part of timer display
+            print()
+
 
 
     if clean:
@@ -261,15 +289,18 @@ def main() -> None:
             continue
 
         if args.split:
-            split_file(filepath, dry_run=args.dry_run, clean=args.clean)
-            # split_filenames.append(os.path.basename(filepath))
-            split_filenames.append(os.path.abspath(filepath))
+            full_path = os.path.abspath(filepath)
+
+            split_filenames.append(split_file(filepath, dry_run=args.dry_run, clean=args.clean))
+
             split_count += 1
 
         elif args.merge:
-            merge_file(filepath, dry_run=args.dry_run, clean=args.clean)
-            # merge_filenames.append(os.path.basename(filepath))
-            merge_filenames.append(os.path.abspath(filepath))
+            full_path = os.path.abspath(filepath)
+            normalized_path = os.path.normpath(full_path)
+
+            merge_filenames.append(merge_file(normalized_path, dry_run=args.dry_run, clean=args.clean))
+
             merge_count += 1
 
     elapsed_time = format_elapsed_time(start_time)
