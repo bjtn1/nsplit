@@ -11,8 +11,6 @@ import os
 import shutil
 import time
 import math
-import os
-import time
 import re
 
 ONE_KB = 2**10
