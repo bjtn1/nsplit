@@ -55,7 +55,15 @@ def is_split_file(filepath: str) -> bool:
 
 def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> str:
     """
-    Merges a <filename>.split.<extension> file back into a <filename>.<extension> file
+    Merges a <filename>.split.<extension> file back into a <filename>.<extension> file.
+    
+    Args:
+        folderpath (str): Path to the split folder to be merged.
+        dry_run (bool): If True, simulate the merge without writing files.
+        clean (bool): If True, delete the split folder after merging.
+    
+    Returns:
+        str: Path to the newly merged file.
     """
 
     if not is_split_file(folderpath):
@@ -74,29 +82,31 @@ def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> s
 
     print_banner(f"MERGING {os.path.basename(folderpath)}")
 
-    with open(merged_filename_path, "wb") as outfile:
-        for _, part in enumerate(part_files):
+    if not dry_run:
+        with open(merged_filename_path, "wb") as outfile:
+            for _, part in enumerate(part_files):
+                print(f"ℹ️ Merging part {os.path.basename(part)}... ", end="")
 
-            start_time = time.time()
-            last_printed_seconds = -1
+                start_time = time.time()
+                last_printed_seconds = -1
 
-            # TODO
-            # print the timer nicer
-            # timer isnt counting up at all
-            # fix the error with the trailing slash
-
-            if not dry_run:
                 with open(part, "rb") as infile:
-                    # timer display
-                    elapsed_seconds = int(time.time() - start_time)
-                    if elapsed_seconds != last_printed_seconds:
-                        print(f"ℹ️ Merging part {os.path.basename(part):02}... {format_elapsed_time(start_time)}", end="\r")
-                        last_printed_seconds = elapsed_seconds
+                    while True:
+                        chunk = infile.read(THIRTY_TWO_KB)
+                        if not chunk:
+                            break
+                        outfile.write(chunk)
 
-                    shutil.copyfileobj(infile, outfile)
+                        # Timer display every second
+                        elapsed_seconds = int(time.time() - start_time)
+                        if elapsed_seconds != last_printed_seconds:
+                            print(
+                                f"\rℹ️ Merging part {os.path.basename(part)}... Elapsed: {format_elapsed_time(start_time)}",
+                                end=""
+                            )
+                            last_printed_seconds = elapsed_seconds
 
-            # for timer display
-            print()
+                print()  # newline after each part
 
     if clean:
         shutil.rmtree(os.path.abspath(folderpath))
