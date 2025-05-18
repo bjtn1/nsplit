@@ -134,7 +134,7 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
         for split in range(num_splits):
             # create and name the split file {filename}/{nn} where nn is the split number beginnign at 00
             split_path = os.path.join(split_dir, f"{split:02}")
-            start_time = time.time()
+            print(f"ℹ️ Splitting part {split:02}...")
             if not dry_run:
                 # begin loop to write to the newly created split file
                 with open(split_path, "wb") as outfile:
@@ -153,11 +153,6 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
                         # this is just a fun metric to display once the process has finished
                         total_bytes_written += len(chunk)
 
-            # elapsed_time = format_elapsed_time(start_time)
-            # get the progress of the splitting process for every file after each split
-            # progress = total_bytes_written / filesize
-            elapsed_time = format_elapsed_time(start_time)
-            print(f"ℹ️ Splitting part {split:02}... Elapsed: {elapsed_time}")
 
     if clean:
         os.remove(filepath)
@@ -269,12 +264,14 @@ def main() -> None:
 
         if args.split:
             split_file(filepath, dry_run=args.dry_run, clean=args.clean)
-            split_filenames.append(os.path.basename(filepath))
+            # split_filenames.append(os.path.basename(filepath))
+            split_filenames.append(os.path.abspath(filepath))
             split_count += 1
 
         elif args.merge:
-            # merge_file(filepath, dry_run=args.dry_run, clean=args.clean)
-            merge_filenames.append(os.path.basename(filepath))
+            merge_file(filepath, dry_run=args.dry_run, clean=args.clean)
+            # merge_filenames.append(os.path.basename(filepath))
+            merge_filenames.append(os.path.abspath(filepath))
             merge_count += 1
 
     elapsed_time = format_elapsed_time(start_time)
@@ -292,6 +289,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # merge_split_file("../TEST/Animal Crossing New Horizons [01006F8002326000][US][v0].split.nsp")
     print()
     main()
