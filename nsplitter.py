@@ -58,7 +58,6 @@ def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = THIRTY_TW
     Args:
         folderpath (str): Path to the split folder to be merged.
         dry_run (bool): If True, simulate the merge without writing files.
-        clean (bool): If True, delete the split folder after merging.
     
     Returns:
         str: Path to the newly merged file.
@@ -90,7 +89,7 @@ def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = THIRTY_TW
 
                 print(f"✅ Done in {format_elapsed_time(start_time)}")
 
-    print(f"✅ {merged_filename_path} successfully merged in {format_elapsed_time(start_time - time.time())}")
+    print(f"✅ {merged_filename_path} successfully merged in {format_elapsed_time(time.time() - start_time)}")
 
     return f"{merged_filename_path}"
 
