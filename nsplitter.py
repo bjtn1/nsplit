@@ -79,17 +79,19 @@ def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = FOUR_MB) 
     print_banner(f"MERGING {os.path.basename(folderpath)}")
 
     start_time = time.time()
+
     with open(merged_filename_path, "wb") as outfile:
         for part in part_files:
-            print(f"ℹ️ Merging part {os.path.basename(part)}... ", end="")
+            print(f"ℹ️ Merging part {os.path.basename(part)}...")
 
             if not dry_run:
                 with open(part, "rb") as infile:
                     shutil.copyfileobj(infile, outfile, length=buf_size)
 
-                print(f"✅ Done in {format_elapsed_time(start_time)}")
+    print(f"⏳ Merge took {format_elapsed_time(start_time)}")
+    print(f"\n✅ {merged_filename_path} successfully merged")
 
-    print(f"✅ {merged_filename_path} successfully merged in {format_elapsed_time(time.time() - start_time)}")
+    shutil.rmtree(folderpath)
 
     return f"{merged_filename_path}"
 
@@ -138,19 +140,15 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
 
     print_banner(f"SPLITTING {filename}")
 
+    start_time = time.time()
+
     # Copy final part and trim from main file
     with open(filepath, "r+b") as infile:
         infile.seek(final_split_size * -1, os.SEEK_END)
         outfile = os.path.join(split_dir, f"{split_num:02}")
         part_size = 0
 
-        # timer display
-        start_time = time.time()
-        last_printed_seconds = -1
-        elapsed_seconds = int(time.time() - start_time)
-        if elapsed_seconds != last_printed_seconds:
-            print(f"ℹ️ Splitting part {split_num:02}... Elapsed: {format_elapsed_time(start_time)}", end="\r")
-            last_printed_seconds = elapsed_seconds
+        print(f"ℹ️ Splitting part {split_num:02}...")
 
         if not dry_run:
             with open(outfile, "wb") as split_file:
@@ -161,19 +159,13 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
             infile.truncate()
 
     # Loop through additional parts and trim
-    with open(filepath, 'r+b') as infile:
+    with open(filepath, "r+b") as infile:
         for split in range(split_num - 1):
             infile.seek(MAX_SPLIT_SIZE * -1, os.SEEK_END)
             outfile = os.path.join(split_dir, f"{split_num - (split + 1):02}")
             partSize = 0
 
-            # timer display
-            start_time = time.time()
-            last_printed_seconds = -1
-            elapsed_seconds = int(time.time() - start_time)
-            if elapsed_seconds != last_printed_seconds:
-                print(f"ℹ️ Splitting part {split_num:02}... Elapsed: {format_elapsed_time(start_time)}", end="\r")
-                last_printed_seconds = elapsed_seconds
+            print(f"ℹ️ Splitting part {split_num:02}...")
 
             if not dry_run:
                 with open(outfile, 'wb') as split_file:
@@ -183,7 +175,8 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
                 infile.seek(MAX_SPLIT_SIZE * -1, os.SEEK_END)
                 infile.truncate()
 
-    print(f"✅ {split_dir} successfully split")
+    print(f"⏳ Split took {format_elapsed_time(start_time)}")
+    print(f"\n✅ {split_dir} successfully split")
 
     # return the path of the newly created .split directory
     return split_dir
@@ -309,12 +302,12 @@ def main() -> None:
         print_banner("SUMMARY")
         for name in sorted(split_filenames):
             print(f"✅ {name}")
-        print(f"\nSplit {split_count} files in {elapsed_time}.")
+        print(f"\nSplit {split_count} files in {elapsed_time}")
     elif args.merge:
         print_banner("SUMMARY")
         for name in sorted(merge_filenames):
             print(f"✅ {name}")
-        print(f"\nMerged {merge_count} files in {elapsed_time}.")
+        print(f"\nMerged {merge_count} files in {elapsed_time}")
 
 
 if __name__ == "__main__":
