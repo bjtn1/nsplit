@@ -51,7 +51,7 @@ def is_split_file(filepath: str) -> bool:
     return bool(re.match(r'^.+\.split\.[^.]+$', filename))
 
 
-def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = THIRTY_TWO_KB) -> str:
+def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = FOUR_MB) -> str:
     """
     Merges a <filename>.split.<extension> file back into a <filename>.<extension> file.
     
@@ -85,7 +85,7 @@ def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = THIRTY_TW
 
             if not dry_run:
                 with open(part, "rb") as infile:
-                    shutil.copyfileobj(infile, outfile, length=FOUR_MB)
+                    shutil.copyfileobj(infile, outfile, length=buf_size)
 
                 print(f"✅ Done in {format_elapsed_time(start_time)}")
 
