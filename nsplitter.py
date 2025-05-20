@@ -16,6 +16,7 @@ import re
 THIRTY_TWO_KB = 0x8000 # 32,768 bytes
 FOUR_GB = 0xFFFF0000 # 4,294,901,760 bytes
 MAX_SPLIT_SIZE = 0xFFFF0000 # 4,294,901,760 bytes
+FOUR_MB = 4 * 1024 * 1024
 
 
 def print_banner(msg: str) -> None:
@@ -50,7 +51,7 @@ def is_split_file(filepath: str) -> bool:
     return bool(re.match(r'^.+\.split\.[^.]+$', filename))
 
 
-def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> str:
+def merge_file(folderpath: str, dry_run: bool = False, buf_size: int = THIRTY_TWO_KB) -> str:
     """
     Merges a <filename>.split.<extension> file back into a <filename>.<extension> file.
     
@@ -68,7 +69,6 @@ def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> s
         return ""
 
     merged_filename = os.path.basename(folderpath).replace(".split", "")
-
     merged_filename_path = os.path.abspath(os.path.join(os.path.dirname(folderpath), merged_filename))
 
     # this ensures the files will be in order when they get merged
@@ -79,36 +79,18 @@ def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> s
 
     print_banner(f"MERGING {os.path.basename(folderpath)}")
 
-    if not dry_run:
-        with open(merged_filename_path, "wb") as outfile:
-            for _, part in enumerate(part_files):
-                print(f"ℹ️ Merging part {os.path.basename(part)}... ", end="")
+    start_time = time.time()
+    with open(merged_filename_path, "wb") as outfile:
+        for part in part_files:
+            print(f"ℹ️ Merging part {os.path.basename(part)}... ", end="")
 
-                start_time = time.time()
-                last_printed_seconds = -1
-
+            if not dry_run:
                 with open(part, "rb") as infile:
-                    while True:
-                        chunk = infile.read(THIRTY_TWO_KB)
-                        if not chunk:
-                            break
-                        outfile.write(chunk)
+                    shutil.copyfileobj(infile, outfile, length=FOUR_MB)
 
-                        # Timer display every second
-                        elapsed_seconds = int(time.time() - start_time)
-                        if elapsed_seconds != last_printed_seconds:
-                            print(
-                                f"\rℹ️ Merging part {os.path.basename(part)}... Elapsed: {format_elapsed_time(start_time)}",
-                                end=""
-                            )
-                            last_printed_seconds = elapsed_seconds
+                print(f"✅ Done in {format_elapsed_time(start_time)}")
 
-                print()  # newline after each part
-
-    if clean:
-        shutil.rmtree(os.path.abspath(folderpath))
-
-    print(f"✅ {merged_filename_path} successfully merged")
+    print(f"✅ {merged_filename_path} successfully merged in {format_elapsed_time(start_time - time.time())}")
 
     return f"{merged_filename_path}"
 
