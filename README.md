@@ -1,169 +1,158 @@
 <!-- TOC start (generated with https://github.com/derlin/bitdowntoc) -->
+
+<!-- TOC --><a name="nsplitter"></a>
 # nsplitter
 
-**Author:** Brandon Jose Tenorio Noguera  
-**Email:** [nsplitter@bjtn.me](mailto:nsplitter@bjtn.me)
+**Split and merge large files for FAT32 compatibility**
 
-`nsplitter` is a command-line utility that splits large files into 4GB chunks and merges them back again. It's especially useful for transferring files to FAT32 drives or other filesystems with size limits.
+`nsplitter.py` is a command-line utility that splits large files into smaller chunks (e.g., 4GB) and merges them back. It’s particularly useful for transferring large files onto FAT32-formatted drives, which cannot store files larger than 4GB.
+
+> Split algorithm inspired by [AnalogMan151/splitNSP](https://github.com/AnalogMan151/splitNSP/blob/master/splitNSP.py).
 
 ---
 
-* [🔧 Features](#-features)
-* [💻 Requirements](#-requirements)
+* [🚀 Features](#-features)
 * [📦 Installation](#-installation)
-* [🚀 Usage](#-usage)
-  + [Split files](#split-files)
-  + [Merge files](#merge-files)
-  + [Split all `.nsp` files in a directory (non-recursive)](#split-all-nsp-files-in-a-directory-non-recursive)
-  + [Merge recursively and clean up after](#merge-recursively-and-clean-up-after)
-* [🔤 Options](#-options)
-* [📁 Output Structure](#-output-structure)
-* [🧪 Example](#-example)
-* [🛠 How It Works](#-how-it-works)
-* [⚠️ Notes](#-notes)
-* [📝 License](#-license)
-* [📫 Contact](#-contact)
+* [🧑‍💻 Usage](#-usage)
+  + [Split a single file](#split-a-single-file)
+  + [Merge a previously split folder](#merge-a-previously-split-folder)
+  + [Split all `.nsp` files in a folder (non-recursive)](#split-all-nsp-files-in-a-folder-non-recursive)
+  + [Merge all split folders in a folder recursively](#merge-all-split-folders-in-a-folder-recursively)
+  + [Dry-run mode (simulate actions without modifying files)](#dry-run-mode-simulate-actions-without-modifying-files)
+* [⚙️ Command-Line Options](#-command-line-options)
+* [📁 Output](#-output)
+* [🛑 Limitations](#-limitations)
+* [🧼 Example Folder Structure](#-example-folder-structure)
+* [🤝 Contributions](#-contributions)
+* [💬 Contact](#-contact)
 
 <!-- TOC end -->
 
 ---
 
 <!-- TOC --><a name="-features"></a>
-## 🔧 Features
+## 🚀 Features
 
-- Split large files into `4GB - 64KB` chunks
-- Merge `.split.*` directories back into original files
-- Supports dry runs to simulate actions without writing to disk
-- Cleans up original files or directories after processing (optional)
-- Works recursively on directories
-- Supports extension filtering
-
----
-
-<!-- TOC --><a name="-requirements"></a>
-## 💻 Requirements
-
-- Python 3.7 or higher
+- 🔹 Split any large file into 4GB chunks (FAT32-friendly)
+- 🔹 Merge split folders back into the original file
+- 🔹 Optional dry-run mode for safe testing
+- 🔹 Supports individual files or entire directories (with optional recursion)
+- 🔹 Automatically handles file renaming and ordering
+- 🔹 Clean, color-coded CLI output with progress banners
 
 ---
 
 <!-- TOC --><a name="-installation"></a>
 ## 📦 Installation
 
-No installation needed. Just download or clone the repository and run the script directly:
-
 ```bash
-python nsplitter.py [OPTIONS]
+git clone https://github.com/bjtn1/nsplitter.git
+cd nsplitter
+python3 nsplitter.py --help
 ```
+
+> Requires Python 3.7+
 
 ---
 
 <!-- TOC --><a name="-usage"></a>
-## 🚀 Usage
+## 🧑‍💻 Usage
 
-<!-- TOC --><a name="split-files"></a>
-### Split files
+<!-- TOC --><a name="split-a-single-file"></a>
+### Split a single file
 
 ```bash
-python nsplitter.py --split FILE1 FILE2 ...
+python3 nsplitter.py -s path/to/largefile.nsp
 ```
 
-<!-- TOC --><a name="merge-files"></a>
-### Merge files
+<!-- TOC --><a name="merge-a-previously-split-folder"></a>
+### Merge a previously split folder
 
 ```bash
-python nsplitter.py --merge FOLDER1 FOLDER2 ...
+python3 nsplitter.py -m path/to/largefile.split.nsp
 ```
 
-<!-- TOC --><a name="split-all-nsp-files-in-a-directory-non-recursive"></a>
-### Split all `.nsp` files in a directory (non-recursive)
+<!-- TOC --><a name="split-all-nsp-files-in-a-folder-non-recursive"></a>
+### Split all `.nsp` files in a folder (non-recursive)
 
 ```bash
-python nsplitter.py -s -d /path/to/dir -e nsp
+python3 nsplitter.py -s -d path/to/folder -e nsp
 ```
 
-<!-- TOC --><a name="merge-recursively-and-clean-up-after"></a>
-### Merge recursively and clean up after
+<!-- TOC --><a name="merge-all-split-folders-in-a-folder-recursively"></a>
+### Merge all split folders in a folder recursively
 
 ```bash
-python nsplitter.py -m -d /path/to/dir -e nsp -r -c
+python3 nsplitter.py -m -d path/to/folder -e nsp -r
+```
+
+<!-- TOC --><a name="dry-run-mode-simulate-actions-without-modifying-files"></a>
+### Dry-run mode (simulate actions without modifying files)
+
+```bash
+python3 nsplitter.py -s -d path/to/folder -e nsp --dry-run
 ```
 
 ---
 
-<!-- TOC --><a name="-options"></a>
-## 🔤 Options
+<!-- TOC --><a name="-command-line-options"></a>
+## ⚙️ Command-Line Options
 
-| Option            | Description |
-|-------------------|-------------|
-| `-s`, `--split`   | Split mode (mutually exclusive with merge) |
-| `-m`, `--merge`   | Merge mode (mutually exclusive with split) |
-| `-d`, `--directory DIR` | Directory to scan for files/folders |
-| `-e`, `--extension EXT` | File extension to filter (required with `-d`) |
-| `-r`, `--recursive`     | Recursively scan subdirectories |
-| `-c`, `--clean`         | Delete original file (when splitting) or folder (when merging) |
-| `--dry-run`             | Simulate the operation without making changes |
-| `files`                 | List of individual files or folders to process |
+| Flag              | Description                                                   |
+|-------------------|---------------------------------------------------------------|
+| `-s`, `--split`    | Split files                                                   |
+| `-m`, `--merge`    | Merge previously split files                                  |
+| `-d`, `--directory`| Directory to search for files                                 |
+| `-e`, `--extension`| File extension to target (e.g., `nsp`, `mp4`)                |
+| `-r`, `--recursive`| Recurse into subdirectories                                   |
+| `--dry-run`        | Simulate the process without making changes                  |
+| `files`            | One or more individual files/folders to process              |
+
+> Note: When using `--directory`, `--extension` is required.
 
 ---
 
-<!-- TOC --><a name="-output-structure"></a>
-## 📁 Output Structure
+<!-- TOC --><a name="-output"></a>
+## 📁 Output
 
-For a file like `game.nsp`, the split output will be:
+- When splitting: creates a folder named `filename.split.extension` containing numbered parts (`00`, `01`, `02`, ...).
+- When merging: combines parts back into a single file and removes the `.split` folder.
+
+---
+
+<!-- TOC --><a name="-limitations"></a>
+## 🛑 Limitations
+
+- Files ≤ 4GB will be skipped during splitting.
+- The system must have enough free disk space to create temporary parts.
+- Only numeric part names are supported (e.g., `00`, `01`, ...).
+
+---
+
+<!-- TOC --><a name="-example-folder-structure"></a>
+## 🧼 Example Folder Structure
+
+After splitting:
 
 ```
-game.split.nsp/
-├── 00
-├── 01
-├── ...
-```
-
-The merged result will recreate `game.nsp` in the same directory.
-
----
-
-<!-- TOC --><a name="-example"></a>
-## 🧪 Example
-
-```bash
-python nsplitter.py -s my_game.nsp
-# Output: my_game.split.nsp/00, 01, ...
-```
-
-```bash
-python nsplitter.py -m my_game.split.nsp
-# Output: my_game.nsp
+game.nsp
+└── game.split.nsp/
+    ├── 00
+    ├── 01
+    └── 02
 ```
 
 ---
 
-<!-- TOC --><a name="-how-it-works"></a>
-## 🛠 How It Works
+<!-- TOC --><a name="-contributions"></a>
+## 🤝 Contributions
 
-- **Split**: Reads the input file in chunks (default 32KB buffer) and writes up to ~4GB per part.
-- **Merge**: Reassembles the chunks in numeric order into a single file.
-- **Timers**: Elapsed time is printed for each split/merge operation for visibility.
-
----
-
-<!-- TOC --><a name="-notes"></a>
-## ⚠️ Notes
-
-- FAT32 has a 4GB file size limit. This tool creates splits that comply with this constraint.
-- Ensure you have enough free disk space when splitting files.
-- Original files/folders can be removed automatically with `--clean`.
-
----
-
-<!-- TOC --><a name="-license"></a>
-## 📝 License
-
-MIT License
+Pull requests are welcome! Please open an issue first if you’d like to discuss a major change.
 
 ---
 
 <!-- TOC --><a name="-contact"></a>
-## 📫 Contact
+## 💬 Contact
 
-For bugs, questions, or suggestions, email [nsplitter@bjtn.me](mailto:nsplitter@bjtn.me) or open an issue
+Questions or feedback?  
+📧 [nsplitter@bjtn.me](mailto:nsplitter@bjtn.me)
