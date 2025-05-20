@@ -14,11 +14,11 @@ import math
 import re
 
 ONE_KB = 2**10
-THIRTY_TWO_KB = 32 * ONE_KB
+THIRTY_TWO_KB = 0x8000 # 32,768 bytes
 SIXTY_FOUR_KB = 64 * ONE_KB
 ONE_MB = 2**20
-FOUR_GB = 4 * 2**30
-MAX_SPLIT_SIZE = FOUR_GB - SIXTY_FOUR_KB
+FOUR_GB = 0xFFFF0000 # 4,294,901,760 bytes
+MAX_SPLIT_SIZE = 0xFFFF0000 # 4,294,901,760 bytes
 
 
 def print_banner(msg: str) -> None:
@@ -118,6 +118,8 @@ def merge_file(folderpath: str, dry_run: bool = False, clean: bool = False) -> s
 
 def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = False, clean: bool = False) -> str:
     """
+    Highly inspired by https://github.com/AnalogMan151/splitNSP/blob/master/splitNSP.py
+
     Splits a large file into multiple 4GB chunks and stores them in a dedicated split directory.
 
     The output files are named numerically (e.g., 00, 01, 02...) and stored in a new directory
@@ -131,15 +133,12 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
     Returns:
         str: Path of the newly created split directory
     """
-
-    filesize: int = os.path.getsize(filepath)
-
     # get the name of the file from the filepath
     filename: str = os.path.basename(filepath)
 
-    # calculate how many splits we're gonna create for this file
-    # use math.ceil to in case filesize is not perfectly divisible by 4GB
-    num_splits = math.ceil(filesize / MAX_SPLIT_SIZE)
+    file_size = os.path.getsize(filepath)
+
+    split_num = int(file_size/MAX_SPLIT_SIZE)
 
     # get the name of the directory where this file is located
     # so that we know where to put the split files
@@ -148,47 +147,44 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
     # creates a file named <filename>.split.<file_extension>
     file_extension = os.path.splitext(filepath)[1].lstrip(".")
     filename_without_extension = os.path.splitext(os.path.basename(filepath))[0]
+
     split_dir = os.path.abspath(os.path.join(parent_dir, f"{filename_without_extension}.split.{file_extension}"))
-    os.makedirs(split_dir, exist_ok=True)
+
+    if os.path.exists(split_dir):
+        shutil.rmtree(split_dir)
+
+    os.makedirs(split_dir)
+
+    remaining_size = file_size
 
     print_banner(f"SPLITTING {filename}")
 
-    # open file in read-binary mode
+    # Open source file and begin writing to output files stoping at splitSize
     with open(filepath, "rb") as infile:
-        # run this loop for as many splits as will be needed for this specific file
-        for split in range(num_splits):
-            # create and name the split file {filename}/{nn} where nn is the split number beginnign at 00
-            split_path = os.path.join(split_dir, f"{split:02}")
+        for split in range(split_num + 1):
+            part_size = 0
 
             start_time = time.time()
             last_printed_seconds = -1
 
+            # timer display
+            elapsed_seconds = int(time.time() - start_time)
+            if elapsed_seconds != last_printed_seconds:
+                print(f"ℹ️ Splitting part {split:02}... Elapsed: {format_elapsed_time(start_time)}", end="\r")
+                last_printed_seconds = elapsed_seconds
+
+            outfile = os.path.join(split_dir, f"{split:02}")
             if not dry_run:
-                # begin loop to write to the newly created split file
-                with open(split_path, "wb") as outfile:
-                    bytes_written = 0
-                    # each split must be 4GB - 64KB long
-                    while bytes_written < (MAX_SPLIT_SIZE):
-
-                        # timer display
-                        elapsed_seconds = int(time.time() - start_time)
-                        if elapsed_seconds != last_printed_seconds:
-                            print(f"ℹ️ Splitting part {split:02}... Elapsed: {format_elapsed_time(start_time)}", end="\r")
-                            last_printed_seconds = elapsed_seconds
-
-                        # read the input file (file to be split) in chunks of 32KB 
-                        chunk = infile.read(buf_size)
-                        # if there is no more bytes to be read, break out of the loop
-                        if not chunk:
-                            break
-                        # write the 32KB chunk we just read fromn the infile to the outfile
-                        outfile.write(chunk)
-                        # increment loop-stopping condition
-                        bytes_written += len(chunk)
-            # flush a clean line. part of timer display
-            print()
-
-
+                with open(outfile, "wb") as split_file: 
+                    if remaining_size > MAX_SPLIT_SIZE:
+                        while part_size < MAX_SPLIT_SIZE:
+                            split_file.write(infile.read(buf_size))
+                            part_size += buf_size
+                        remaining_size -= MAX_SPLIT_SIZE
+                    else:
+                        while part_size < remaining_size:
+                            split_file.write(infile.read(buf_size))
+                            part_size += buf_size
 
     if clean:
         os.remove(filepath)
@@ -196,6 +192,88 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
     print(f"✅ {split_dir} successfully split")
     # return the path of the newly created .split directory
     return split_dir
+
+
+# def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = False, clean: bool = False) -> str:
+#     """
+#     Splits a large file into multiple 4GB chunks and stores them in a dedicated split directory.
+#
+#     The output files are named numerically (e.g., 00, 01, 02...) and stored in a new directory
+#     located next to the original file, named <filename>.split. The original file is deleted
+#     after splitting is completed.
+#
+#     Args:
+#         filepath (str): The full path to the file to be split.
+#         bufsize  (int): The size of the buffer where we store bytes to be read and written
+#
+#     Returns:
+#         str: Path of the newly created split directory
+#     """
+#
+#     filesize: int = os.path.getsize(filepath)
+#
+#     # get the name of the file from the filepath
+#     filename: str = os.path.basename(filepath)
+#
+#     # calculate how many splits we're gonna create for this file
+#     # use math.ceil to in case filesize is not perfectly divisible by 4GB
+#     num_splits = math.ceil(filesize / MAX_SPLIT_SIZE)
+#
+#     # get the name of the directory where this file is located
+#     # so that we know where to put the split files
+#     parent_dir = os.path.dirname(filepath)
+#
+#     # creates a file named <filename>.split.<file_extension>
+#     file_extension = os.path.splitext(filepath)[1].lstrip(".")
+#     filename_without_extension = os.path.splitext(os.path.basename(filepath))[0]
+#     split_dir = os.path.abspath(os.path.join(parent_dir, f"{filename_without_extension}.split.{file_extension}"))
+#     os.makedirs(split_dir, exist_ok=True)
+#
+#     print_banner(f"SPLITTING {filename}")
+#
+#     # open file in read-binary mode
+#     with open(filepath, "rb") as infile:
+#         # run this loop for as many splits as will be needed for this specific file
+#         for split in range(num_splits):
+#             # create and name the split file {filename}/{nn} where nn is the split number beginnign at 00
+#             split_path = os.path.join(split_dir, f"{split:02}")
+#
+#             start_time = time.time()
+#             last_printed_seconds = -1
+#
+#             if not dry_run:
+#                 # begin loop to write to the newly created split file
+#                 with open(split_path, "wb") as outfile:
+#                     bytes_written = 0
+#                     # each split must be 4GB - 64KB long
+#                     while bytes_written < (MAX_SPLIT_SIZE):
+#
+#                         # timer display
+#                         elapsed_seconds = int(time.time() - start_time)
+#                         if elapsed_seconds != last_printed_seconds:
+#                             print(f"ℹ️ Splitting part {split:02}... Elapsed: {format_elapsed_time(start_time)}", end="\r")
+#                             last_printed_seconds = elapsed_seconds
+#
+#                         # read the input file (file to be split) in chunks of 32KB 
+#                         chunk = infile.read(buf_size)
+#                         # if there is no more bytes to be read, break out of the loop
+#                         if not chunk:
+#                             break
+#                         # write the 32KB chunk we just read fromn the infile to the outfile
+#                         outfile.write(chunk)
+#                         # increment loop-stopping condition
+#                         bytes_written += len(chunk)
+#             # flush a clean line. part of timer display
+#             print()
+#
+#
+#
+#     if clean:
+#         os.remove(filepath)
+#
+#     print(f"✅ {split_dir} successfully split")
+#     # return the path of the newly created .split directory
+#     return split_dir
 
 
 def collect_files(directory: str, extension: str, recursive: bool, split: bool) -> list[str]:
