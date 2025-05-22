@@ -130,7 +130,10 @@ def split_file(filepath: str, buf_size: int = THIRTY_TWO_KB, dry_run: bool = Fal
     file_extension = os.path.splitext(filepath)[1].lstrip(".")
     filename_without_extension = os.path.splitext(os.path.basename(filepath))[0]
     split_dir = os.path.abspath(os.path.join(parent_dir, f"{filename_without_extension}.split.{file_extension}"))
-    os.makedirs(split_dir, exist_ok=True)
+
+    # only create the directory iff not dry-run
+    if not dry_run:
+        os.makedirs(split_dir, exist_ok=True)
 
     print_banner(f"SPLITTING {filename}")
 
